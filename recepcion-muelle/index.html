@@ -164,8 +164,14 @@
 <div class="sheet" id="sheetNew">
   <div class="sheet-header"><button class="back" onclick="closeSheet('sheetNew')">←</button><div class="sheet-title">Nuevo ingreso</div></div>
   <div class="sheet-body">
-    <label>Transportista / Proveedor</label>
-    <input id="fTransportista" placeholder="Nombre / empresa" autocomplete="off">
+    <label>Buscar proveedor (RUC o nombre)</label>
+    <input id="fProveedorBuscar" list="proveedoresDatalist" placeholder="Escribe RUC o nombre..." autocomplete="off" oninput="onProveedorInput()">
+    <datalist id="proveedoresDatalist"></datalist>
+    <div id="proveedorInfo" style="display:none; margin-top:8px; padding:10px 12px; background:var(--ok-bg); border-radius:8px; font-size:13px;">
+      <div><strong>RUC:</strong> <span id="infoRuc" style="font-family:'JetBrains Mono',monospace;"></span></div>
+      <div><strong>Hora agendada:</strong> <span id="infoHora" style="font-family:'JetBrains Mono',monospace;"></span></div>
+    </div>
+    <div id="proveedorNoMatch" style="display:none; margin-top:8px; padding:10px 12px; background:var(--pending-bg); border-radius:8px; font-size:12px; color:var(--ink-soft);">No está en la agenda de hoy — se registrará solo con el nombre escrito.</div>
     <label>Tipo de mercadería</label>
     <input id="fTipoMercaderia" placeholder="Ej. Congelados, secos, frutas..." autocomplete="off">
     <button class="primary" onclick="registrarLlegada()">Registrar llegada</button>
@@ -179,7 +185,47 @@
 </div>
 
 <script>
+const PROVEEDORES = [{"ruc": "1009166999", "nombre": "ROSA BARAHONA S.A", "hora": "11:30"}, {"ruc": "1009877291", "nombre": "PALOMINO SEGOVIA YVAN", "hora": "06:30"}, {"ruc": "1010061272", "nombre": "WISMANN MEJIA FRANCISCO JOSE", "hora": "11:00"}, {"ruc": "1016126943", "nombre": "MELO YANAVILCA MARIA GLADYS", "hora": "07:30"}, {"ruc": "1019836033", "nombre": "QUISPE GAMARRA ELEODORO JULIO", "hora": "10:00"}, {"ruc": "1041915870", "nombre": "VILCAPOMA HILARIO JAIME JACINTO", "hora": "10:30"}, {"ruc": "1043201353", "nombre": "HUAMANI HUACHUHUILLCA ANGEL", "hora": "09:00"}, {"ruc": "1044641922", "nombre": "HUAMANI HUACHUHUILLCA JOSE LUIS", "hora": "08:30"}, {"ruc": "1047659000", "nombre": "ESPINOZA ZORRILLA GLORIA LEYDI", "hora": "10:00"}, {"ruc": "1048165792", "nombre": "JHONATAN ALFREDO MENDOZA GALVAN", "hora": "10:30"}, {"ruc": "2010003083", "nombre": "G.W. YICHANG CIA S.A.", "hora": "10:30"}, {"ruc": "2010003512", "nombre": "MOLITALIA S.A.", "hora": "22:00"}, {"ruc": "2010005205", "nombre": "PERUFARMA S.A.", "hora": "08:00"}, {"ruc": "2010005523", "nombre": "ALICORP S.A.A.", "hora": "08:30"}, {"ruc": "2010006791", "nombre": "BRAEDT S. A.", "hora": "08:30"}, {"ruc": "2010009545", "nombre": "LAIVE S A", "hora": "22:00"}, {"ruc": "2010011736", "nombre": "MITSUI & CO. (PERÚ) S.A.", "hora": "11:00"}, {"ruc": "2010015430", "nombre": "SAN FERNANDO", "hora": "07:30"}, {"ruc": "2010017122", "nombre": "PROCESADORA DE ALIMENTOS TI-CAY", "hora": "07:30"}, {"ruc": "2010019079", "nombre": "GLORIA S. A.", "hora": "22:00"}, {"ruc": "2010021111", "nombre": "FAB. DE CHOC. LA IBERICA S.A.", "hora": "09:30"}, {"ruc": "2010065461", "nombre": "SANTA VERENA S.A.C.", "hora": "22:00"}, {"ruc": "2010087392", "nombre": "PACCU S.A.", "hora": "06:00"}, {"ruc": "2010108861", "nombre": "LACTEOS PIAMONTE S.A.C", "hora": "09:00"}, {"ruc": "2010109400", "nombre": "PRODUCTOS EL CEDRO S.A.", "hora": "07:30"}, {"ruc": "2010109469", "nombre": "ADRIATICA DE IMPORTACIONES Y EXPORTACION", "hora": "11:30"}, {"ruc": "2010162866", "nombre": "FABRICA DE FIDEOS LA PASTA E.I", "hora": "08:30"}, {"ruc": "2010216486", "nombre": "MIGUEL LUDOWIEG S.A.", "hora": "11:30"}, {"ruc": "2010450802", "nombre": "AGROPECUARIA RIO BRAVO HNOS SAC", "hora": "13:00"}, {"ruc": "2010797560", "nombre": "PRODUCTOS ALIMENTICIOS TRESA S", "hora": "10:30"}, {"ruc": "2010805627", "nombre": "IMPORTACIONES Y COMERCIO INTER", "hora": "08:00"}, {"ruc": "2010855578", "nombre": "VERMI S.A.C.", "hora": "06:00"}, {"ruc": "2010971144", "nombre": "DELICE S.A.C", "hora": "09:30"}, {"ruc": "2011180213", "nombre": "DON ITALO S.A.", "hora": "10:30"}, {"ruc": "2011721842", "nombre": "MILAN TRADE SA", "hora": "11:30"}, {"ruc": "2011773923", "nombre": "VENTURA INTERNATIONAL S.A.C.", "hora": "08:00"}, {"ruc": "2011982077", "nombre": "PLANTA LECHERA TACNA S.A.", "hora": "11:00"}, {"ruc": "2011987354", "nombre": "LA GENOVESA AGROINDUSTRIAS S.A", "hora": "08:30"}, {"ruc": "2012216084", "nombre": "AGE S.A.", "hora": "06:30"}, {"ruc": "2012346867", "nombre": "CONTOMETROS ESPECIALES SAC", "hora": "12:00"}, {"ruc": "2012642687", "nombre": "BOMBONERIA DI PERUGIA S.A.C.", "hora": "10:30"}, {"ruc": "2012956126", "nombre": "PISCIFACTORIAS DE LOS ANDES S.A", "hora": "11:30"}, {"ruc": "2013622272", "nombre": "SAFRESCO PERU S.A.", "hora": "11:00"}, {"ruc": "2015526157", "nombre": "GANADERA SANTA ELENA S.A (AVINKA S.A )", "hora": "08:30"}, {"ruc": "2015947519", "nombre": "INVERSIONES PECUARIAS LURIN S.A.", "hora": "10:30"}, {"ruc": "2018456974", "nombre": "CENTRO CARNES S.R.L.", "hora": "11:00"}, {"ruc": "2019130886", "nombre": "ARCOR DE PERU S.A", "hora": "09:30"}, {"ruc": "2020359943", "nombre": "CORPORACION BENEST S.A.C.", "hora": "10:30"}, {"ruc": "2020592214", "nombre": "P&D ANDINA ALIMENTOS S.A.", "hora": "08:00"}, {"ruc": "2020976225", "nombre": "T & C REPRESENTACIONES SRLTDA.", "hora": "11:00"}, {"ruc": "2022108468", "nombre": "REDONDOS S. A.", "hora": "09:00"}, {"ruc": "2025199596", "nombre": "PERUANA DE MOLDEADOS S.A.", "hora": "11:00"}, {"ruc": "2025350146", "nombre": "COMERCIALIZADORA G & C", "hora": "06:30"}, {"ruc": "2025769210", "nombre": "MAR FOODS EIRL", "hora": "12:00"}, {"ruc": "2026332249", "nombre": "NESTLE PERU S.A.", "hora": "11:00"}, {"ruc": "2026635233", "nombre": "SOFTYS PERU S.A.C", "hora": "12:00"}, {"ruc": "2026858909", "nombre": "COMPAÑÍA AGROIND. PUNTA DEL SUR", "hora": "11:30"}, {"ruc": "2032369936", "nombre": "INVERSIONES PERUALP S.A.", "hora": "09:30"}, {"ruc": "2034201510", "nombre": "AGROINDUSTRIAS NOBEX S.A.", "hora": "08:00"}, {"ruc": "2034450684", "nombre": "OVOSUR S.A", "hora": "09:30"}, {"ruc": "2034455236", "nombre": "PRODUCTORA DE ALIMENTOS UNO S.A.C.", "hora": "09:30"}, {"ruc": "2034873569", "nombre": "PANIFICADORA BIMBO DEL PERU S.A", "hora": "11:00"}, {"ruc": "2037200719", "nombre": "NEGOCIOS JORDI S.R.L.", "hora": "09:00"}, {"ruc": "2037222704", "nombre": "LESAFFRE PERU S.A.C.", "hora": "09:00"}, {"ruc": "2037681504", "nombre": "DEL ANDE IQF S.A.C.", "hora": "07:30"}, {"ruc": "2039272997", "nombre": "PERPOL IDEAS S.A.C.", "hora": "07:30"}, {"ruc": "2041509465", "nombre": "F Y D INVERSIONES S.A.C.", "hora": "10:00"}, {"ruc": "2041600110", "nombre": "FOOD PACK S.A.C.", "hora": "11:30"}, {"ruc": "2042830160", "nombre": "VADIMAR S.A.C.", "hora": "11:00"}, {"ruc": "2045030121", "nombre": "INDUSTRIAS MAYO S.A.", "hora": "09:30"}, {"ruc": "2046882695", "nombre": "FRIOPAN S.A.C.", "hora": "09:00"}, {"ruc": "2047124956", "nombre": "HIDROPLANT SAC", "hora": "22:00"}, {"ruc": "2047530636", "nombre": "COMERCIALIZADORA COBERTURA NEGUSA S.A.C.", "hora": "08:30"}, {"ruc": "2047906202", "nombre": "PERU CHEESE S.R.L", "hora": "08:30"}, {"ruc": "2047910820", "nombre": "PRODUCTOS AGRICOLAS YOLITA EIRL.", "hora": "23:00"}, {"ruc": "2048001386", "nombre": "ORGANICA EIRL", "hora": "22:00"}, {"ruc": "2048602428", "nombre": "MATADERO FRIGORIFICO INDUSTRIAL OXAPAMPA", "hora": "09:00"}, {"ruc": "2048622607", "nombre": "ASOCIACION DE PRODUCTORES DE FRUTALES EX", "hora": "09:00"}, {"ruc": "2050045382", "nombre": "PECUARIA EL CHANCHITO S.A.C.", "hora": "09:00"}, {"ruc": "2050202658", "nombre": "PATT FRESH S.A.C", "hora": "07:00"}, {"ruc": "2050269949", "nombre": "ALIMENTOS PROCESADOS FRESCOS Y CONGELADO", "hora": "11:30"}, {"ruc": "2050336557", "nombre": "JUANDY E.I.R.L.", "hora": "08:30"}, {"ruc": "2050372740", "nombre": "OREGON FOODS S.A.C.", "hora": "10:30"}, {"ruc": "2050442993", "nombre": "GUSKEL E.I.R.L.", "hora": "09:00"}, {"ruc": "2050472990", "nombre": "FROZEN PRODUCTS CORPORATION S.A.C.", "hora": "09:30"}, {"ruc": "2050486311", "nombre": "MATRITECH S.A.C.", "hora": "09:00"}, {"ruc": "2050496392", "nombre": "CALSA PERU S.A.C.", "hora": "08:30"}, {"ruc": "2050507017", "nombre": "FERYMAR S.A.C.", "hora": "09:00"}, {"ruc": "2050580571", "nombre": "EL HUERTO COMERCIAL E.I.R.L.", "hora": "06:30"}, {"ruc": "2050584666", "nombre": "PANIFICADORA A&A S.A.C.", "hora": "11:00"}, {"ruc": "2050604187", "nombre": "DISTRIBUIDORA PASTOR SEVILLA E", "hora": "09:00"}, {"ruc": "2050647285", "nombre": "TEOFILA Y ASOCIADOS S.A.C.", "hora": "09:00"}, {"ruc": "2050718816", "nombre": "GAMO SERVICE S.R.L.", "hora": "08:00"}, {"ruc": "2050793958", "nombre": "SOLPACK S.A.C.", "hora": "12:00"}, {"ruc": "2050822184", "nombre": "SOUTH PACIFIC INTERNATIONAL S.A.C.", "hora": "10:30"}, {"ruc": "2050866351", "nombre": "AGROPECUARIA DEL SUR S.A.C.", "hora": "07:00"}, {"ruc": "2050928306", "nombre": "INVERSIONES AGROINDUSTRIA MAR S.A.C.", "hora": "09:00"}, {"ruc": "2050972127", "nombre": "TRUMPER'S E.I.R.L.", "hora": "11:30"}, {"ruc": "2051016106", "nombre": "HELATONY'S SOCIEDAD ANONIMA CERRADA", "hora": "21:00"}, {"ruc": "2051027400", "nombre": "ECOLAB PERU HOLDINGS S.R.L", "hora": "12:00"}, {"ruc": "2051036204", "nombre": "GINA Y MICHELL S.A.C.", "hora": "09:00"}, {"ruc": "2051068904", "nombre": "LANDA PRODUCE S.A.C.", "hora": "22:00"}, {"ruc": "2051077610", "nombre": "DELICE PAPAYAS Y PRODUCTOS DERIVADOS SRL", "hora": "06:30"}, {"ruc": "2051086350", "nombre": "FIESTRA S.A.C.", "hora": "11:00"}, {"ruc": "2051092899", "nombre": "CHOCOLATES GURE S.A.C.", "hora": "09:30"}, {"ruc": "2051185811", "nombre": "UNION DE PRODUCTOS AGROINDUSTRIALES S.A.", "hora": "09:00"}, {"ruc": "2051209966", "nombre": "LATIN PERU S.A.C.", "hora": "09:30"}, {"ruc": "2051223110", "nombre": "RC IMPORT GROUP SAC", "hora": "07:00"}, {"ruc": "2051281250", "nombre": "LACTEUS S.A.C.", "hora": "08:30"}, {"ruc": "2051342330", "nombre": "MEGABUSINESS PERU S.A.C.", "hora": "09:00"}, {"ruc": "2051357965", "nombre": "CONFECCIONES RIALS EIRL", "hora": "12:00"}, {"ruc": "2051396723", "nombre": "GRUPO PECUARIO SAC", "hora": "09:00"}, {"ruc": "2051458478", "nombre": "COMPAÑÍA NACIONAL DE CHOCOLATES DE PERU", "hora": "09:30"}, {"ruc": "2051480007", "nombre": "GENERAL FOODS S.A.C.", "hora": "08:00"}, {"ruc": "2051631382", "nombre": "AGRO ALIMENTOS ANDINOS S.A.C.", "hora": "10:30"}, {"ruc": "2051642724", "nombre": "GUSTAKEL E.I.R.L.", "hora": "06:30"}, {"ruc": "2051657306", "nombre": "LEONCITO COMERCIALIZACION ERIL", "hora": "06:30"}, {"ruc": "2051680448", "nombre": "KMC INTERNATIONAL SAC", "hora": "10:00"}, {"ruc": "2051799607", "nombre": "FRESCO PACK S.A.C.", "hora": "06:30"}, {"ruc": "2051945735", "nombre": "GOURMET EXPRESS SOCIEDAD ANONIMA CERRADA", "hora": "08:30"}, {"ruc": "2052053331", "nombre": "PASSIONFRUT E.I.R.L.", "hora": "07:00"}, {"ruc": "2052054702", "nombre": "INVERSIONES CAMP SAC", "hora": "09:30"}, {"ruc": "2052069670", "nombre": "AGRUPA SOCIEDAD ANONIMA CERRADA", "hora": "10:00"}, {"ruc": "2052206103", "nombre": "EXPORTADORA ROMEX S.A.", "hora": "09:30"}, {"ruc": "2052331960", "nombre": "UMI FOODS SAC", "hora": "11:00"}, {"ruc": "2052378877", "nombre": "NEGOCIACIONES ANDREA S.C.R.L.", "hora": "09:30"}, {"ruc": "2052422167", "nombre": "RAIN BRANDS S.A.C.", "hora": "11:30"}, {"ruc": "2052449286", "nombre": "BIOTOCAS S.A.C.", "hora": "09:00"}, {"ruc": "2053716172", "nombre": "SORAYA S.A.C.", "hora": "10:30"}, {"ruc": "2053737447", "nombre": "ANDE'S VALLEY E.I.R.L.", "hora": "09:00"}, {"ruc": "2053752012", "nombre": "AM STAFF SOCIEDAD ANONIMA CERRADA", "hora": "09:00"}, {"ruc": "2054613288", "nombre": "MISTURAPAN S.A.C.", "hora": "11:00"}, {"ruc": "2054679351", "nombre": "WESTPHALIA ALIMENTOS S.A.C.", "hora": "06:00"}, {"ruc": "2054801335", "nombre": "RQ FRUTOS Y DELICIAS DEL PERU E.I.R.L.", "hora": "09:30"}, {"ruc": "2054838174", "nombre": "EXCELFRUT S.A.C", "hora": "06:30"}, {"ruc": "2054855982", "nombre": "MASTER MARTINI PERU S.A.C", "hora": "10:30"}, {"ruc": "2054868731", "nombre": "RICH DE LOS ANDES S.R.L.", "hora": "10:30"}, {"ruc": "2054911424", "nombre": "ALCACHOFAS & DERIVADOS S.A.C.", "hora": "08:00"}, {"ruc": "2055094357", "nombre": "EMBUTIDOS Y LACTEOS DEL VALLE S.A.C.", "hora": "10:30"}, {"ruc": "2055105189", "nombre": "AGRO BUSINESS COMMERCE REYES S.A.C.", "hora": "10:00"}, {"ruc": "2055195854", "nombre": "DARNEL PERU S.A.C.", "hora": "12:00"}, {"ruc": "2055352798", "nombre": "ECOFRUT H & E S.A.C.", "hora": "09:30"}, {"ruc": "2055353441", "nombre": "DOS AL CUBO S.A.C.", "hora": "09:00"}, {"ruc": "2055420009", "nombre": "3G LAB S.R.L.", "hora": "09:00"}, {"ruc": "2055461422", "nombre": "LACTALIS PERU S.A.C.", "hora": "08:30"}, {"ruc": "2055492042", "nombre": "INVERSIONES AGRICOLAS SEÑOR DE LOS MILAGROS", "hora": "07:30"}, {"ruc": "2055701776", "nombre": "INVERSIONES MARIELITA TRUJILLO E.I.R.L.", "hora": "09:00"}, {"ruc": "2056290133", "nombre": "AGROINDUSTRIAS GZ S.A.C.", "hora": "07:00"}, {"ruc": "2056331786", "nombre": "CONSORCIO FRAP S.A.C.", "hora": "22:00"}, {"ruc": "2056371761", "nombre": "C & S AGROINDUSTRIAS S.A.C.", "hora": "09:30"}, {"ruc": "2056647287", "nombre": "INVERSIONES QUMARA PERU SAC", "hora": "09:30"}, {"ruc": "2060021311", "nombre": "MRDS IMPORTACION-EXPORTACION SOCIED ANON", "hora": "10:00"}, {"ruc": "2060029832", "nombre": "EXPORTADORA SAN ALBERTO PERU SOCIED ONIM", "hora": "11:00"}, {"ruc": "2060031855", "nombre": "GRUPO AGRO INNOVA S.A.C.", "hora": "09:00"}, {"ruc": "2060033310", "nombre": "AGROTRANSPORTES E INVERSIONES GVG VALE E.I.R.L", "hora": "06:00"}, {"ruc": "2060036632", "nombre": "INTI HARVEST S.A.C.", "hora": "09:30"}, {"ruc": "2060050962", "nombre": "SEAFROST DISTRIBUIDORA S.A.C.", "hora": "09:00"}, {"ruc": "2060067598", "nombre": "INNVITA FOODS S.A.C.", "hora": "11:00"}, {"ruc": "2060104705", "nombre": "CORPORACION INDUSTRIAL REATEGUI S.A.C", "hora": "10:00"}, {"ruc": "2060116998", "nombre": "ALIMENTOS ARTESANALES DEL PERU SAC", "hora": "08:00"}, {"ruc": "2060118524", "nombre": "LINAJE CORPORACION RM S.A.C.", "hora": "08:00"}, {"ruc": "2060130656", "nombre": "LACTEOS DUMAN S.A.C.", "hora": "08:30"}, {"ruc": "2060135528", "nombre": "EL DATIL PERU S.A.C.", "hora": "07:00"}, {"ruc": "2060151313", "nombre": "JAGB NEGOCIOS E INVERSIONES SAC", "hora": "11:00"}, {"ruc": "2060157624", "nombre": "EXOTICÂ´S PRODUCERS & PACKERS S.A.C.", "hora": "11:00"}, {"ruc": "2060158580", "nombre": "MATIÑA S.A.C.", "hora": "10:30"}, {"ruc": "2060187392", "nombre": "PAPA SELECTA E.I.R.L.", "hora": "07:00"}, {"ruc": "2060201639", "nombre": "THE SPANISH GROCERY S.A.C.", "hora": "08:00"}, {"ruc": "2060214629", "nombre": "AGRO PACAYALES S.A.C.", "hora": "11:00"}, {"ruc": "2060255329", "nombre": "KATARI ALIMENTOS S.A.C.", "hora": "10:30"}, {"ruc": "2060316298", "nombre": "PALETAS FACTORY ARTESANAL SAC", "hora": "09:00"}, {"ruc": "2060328070", "nombre": "INVERSIONES & NEGOCIACIONES WILLIAN SAC", "hora": "11:00"}, {"ruc": "2060373931", "nombre": "FRUTAS Y VEGETALES S.A.C", "hora": "09:30"}, {"ruc": "2060383444", "nombre": "EVANGELISTA & CASQUINO NEGOCIOS S.A", "hora": "11:30"}, {"ruc": "2060396009", "nombre": "HERMANAS GELATO S.A.C.", "hora": "10:00"}, {"ruc": "2060423772", "nombre": "FOOD NATION S.A.C.", "hora": "11:00"}, {"ruc": "2060478577", "nombre": "UNIDAD DE PROCESAMIENTOS LACTEOS EI RL", "hora": "09:00"}, {"ruc": "2060491014", "nombre": "BIEN DELI S.A.C", "hora": "09:30"}, {"ruc": "2060494017", "nombre": "HORTALIZAS HIDROPONICAS S.A.C", "hora": "22:00"}, {"ruc": "2060609526", "nombre": "SEGUIMOS CON LA CHARCUTERIA DE LIMA S.A", "hora": "10:00"}, {"ruc": "2060612136", "nombre": "FRUTAS DEL PAIS S.A.C.", "hora": "11:00"}, {"ruc": "2060627666", "nombre": "MOMENTI S.A.C.", "hora": "11:00"}, {"ruc": "2060638657", "nombre": "BRANDISCO S.A.C.", "hora": "09:00"}, {"ruc": "2060644116", "nombre": "THE FOOD LOVERS INDUSTRY S.A.C.", "hora": "10:00"}, {"ruc": "2060683933", "nombre": "CASHINGARI CITRUS EMPRESA INDIVIDUA L DE", "hora": "09:30"}, {"ruc": "2060711714", "nombre": "TAORMINA ALIMENTOS SAC", "hora": "07:00"}, {"ruc": "2060714444", "nombre": "DESSERT FACTORY PERU S.A.C", "hora": "08:30"}, {"ruc": "2060797653", "nombre": "EXOTIC FRUITS DAWESH SOCIEDAD ANONIMA CE", "hora": "11:00"}, {"ruc": "2060819869", "nombre": "MACQUIS E.I.R.L.", "hora": "10:00"}, {"ruc": "2060849200", "nombre": "AGROINDUSTRIAS E AGROPECUARIAS LATI", "hora": "08:00"}, {"ruc": "2060858827", "nombre": "CORPORACION AGRICOLA DE FRUTAS Y VE GETA", "hora": "09:30"}, {"ruc": "2060860858", "nombre": "AGRO & EXPORTADORA LEZ", "hora": "10:00"}, {"ruc": "2060967540", "nombre": "CALCOL S.A.C.", "hora": "07:00"}, {"ruc": "2060995869", "nombre": "FERMICHELL ALIMENTOS SAC", "hora": "08:00"}, {"ruc": "2061012207", "nombre": "CULINARIA GROUP PERU SAC", "hora": "11:00"}, {"ruc": "2061015355", "nombre": "SEED FOOD SOCIEDAD", "hora": "11:00"}, {"ruc": "2061029237", "nombre": "INVERSIONES INGUNZA & ALVARADO S.A.C.", "hora": "11:00"}, {"ruc": "2061061561", "nombre": "NAPCALI E.I.R.L.", "hora": "09:00"}, {"ruc": "2061065851", "nombre": "GRUPO BENGALA", "hora": "08:30"}, {"ruc": "2061165734", "nombre": "INVERSIONES JHEYSON PALACIOS E.I.R. L.", "hora": "09:00"}, {"ruc": "2061207471", "nombre": "CM BAKERY SAC", "hora": "09:00"}, {"ruc": "2061207955", "nombre": "AGRO EXPORT DIVERS EIRL", "hora": "09:00"}, {"ruc": "2061213470", "nombre": "INVERSIONES HIDROPONICOS QUILMANA S.A.C.", "hora": "10:00"}, {"ruc": "2061227972", "nombre": "ROSETO ALIMENTOS", "hora": "10:30"}, {"ruc": "2061230845", "nombre": "PURA FRUTA PERU SA", "hora": "11:00"}, {"ruc": "2061292263", "nombre": "EL PALTON SOCIEDAD ANONIMA CERRADA", "hora": "10:30"}, {"ruc": "2061326198", "nombre": "QAMPO FERTIL SACS", "hora": "08:00"}, {"ruc": "2061349474", "nombre": "AGRO UNGARA S.A.C", "hora": "11:00"}, {"ruc": "2061352008", "nombre": "LACTEOS AQP SAC", "hora": "10:00"}, {"ruc": "2061352665", "nombre": "AGRO B AND V S.A.C.", "hora": "09:30"}, {"ruc": "2061375392", "nombre": "SNACKING BRANDS S.A.C", "hora": "11:00"}, {"ruc": "2061482331", "nombre": "VERTICE DEL CAMPO SAC", "hora": "08:00"}, {"ruc": "2010065402", "nombre": "CORPORACIÓN DE INDUSTRIAS PLÁSTICAS S A", "hora": "12:00"}, {"ruc": "2050653137", "nombre": "NEGRO Y COLOR EIRL", "hora": "12:00"}, {"ruc": "2054621361", "nombre": "J y A HORTICHUELAS S.A.C", "hora": "09:30"}, {"ruc": "2010442028", "nombre": "AGROINDUSTRIAS AIB S.A", "hora": "20:00"}, {"ruc": "2060242365", "nombre": "ENKEL FOODS S.A.C.", "hora": "09:00"}, {"ruc": "2054755848", "nombre": "FRUTOS FRESCOS DEL PERU S.A.C.", "hora": "10:00"}, {"ruc": "2061496571", "nombre": "FRUTALANDIA TROPICAL SAC", "hora": "09:30"}, {"ruc": "2055198934", "nombre": "AGRO SAN JOSE S.R.L.", "hora": "08:00"}, {"ruc": "2060583265", "nombre": "GRUPO AISAR PERU SAC", "hora": "09:00"}, {"ruc": "2052532973", "nombre": "DON LIMON S.A.C.", "hora": "11:00"}, {"ruc": "2061370332", "nombre": "CMX PERU S.A.C.", "hora": "10:30"}, {"ruc": "2052408881", "nombre": "AVIVEL SAC", "hora": "11:00"}, {"ruc": "2060035058", "nombre": "LIFT LIMA SOCIEDAD ANONIMA CERRADA LIFT", "hora": "08:30"}, {"ruc": "2010665108", "nombre": "CIA.DE EXP.Y NEGOCIOS GNRLES.S.A.(C OEXA", "hora": "20:00"}, {"ruc": "2060318494", "nombre": "AGRICOLA VALLE DE ICA SAC", "hora": "08:00"}, {"ruc": "2017004093", "nombre": "DANPER TRUJILLO SAC", "hora": "11:00"}, {"ruc": "2060245063", "nombre": "TAMBO DISTRIBUIDOR DEL NORTE S.A.C.", "hora": "10:00"}, {"ruc": "2061413039", "nombre": "FLORALPINA", "hora": "09:30"}, {"ruc": "2055134260", "nombre": "IMPORTACIONES VINOS DEL MUNDO SAC", "hora": "10:30"}, {"ruc": "2060282253", "nombre": "HORTIFRUT - PERU S.A.C.", "hora": "10:00"}, {"ruc": "2051650433", "nombre": "ALS INVESTMENT SAC", "hora": "12:00"}, {"ruc": "2061255747", "nombre": "INDUSTRIAS ALVI S.R.L.", "hora": "07:30"}, {"ruc": "2060336397", "nombre": "20 CAUSAS S.A.C.", "hora": "11:00"}, {"ruc": "1063031722", "nombre": "MAYRA CHAVEZ HUAMAN", "hora": "10:30"}, {"ruc": "2061145289", "nombre": "LA SIEMBRA POMA SOCIEDAD ANONIMA CE RRA", "hora": "08:00"}, {"ruc": "2060298030", "nombre": "ALABAMA FOODS SOCIEDAD ANONIMA CERR", "hora": "10:30"}, {"ruc": "1044081936", "nombre": "BEDOYA RAMIREZ CARLOS ALBERTO", "hora": "09:30"}, {"ruc": "2051511255", "nombre": "PREMIUM BRANDS S.A.C", "hora": "11:00"}, {"ruc": "2061268357", "nombre": "INVERSIONES CEYNA S.A.C", "hora": "08:30"}, {"ruc": "2060156070", "nombre": "FRESH FRUIT SANDIA SAC", "hora": "11:00"}, {"ruc": "1077388851", "nombre": "MARIA ALEJANDRINA SAUÑI ALVAREZ", "hora": "09:30"}, {"ruc": "2061199544", "nombre": "AGROFRESH LAND PERU SAC.", "hora": "10:30"}, {"ruc": "2052368936", "nombre": "CORPORACIÓN AGROINDUSTRIAL DE FRUTAS Y VERDURAS EXÓTICAS SAC", "hora": "09:00"}, {"ruc": "2060311567", "nombre": "PERUVIAN C&C SAC", "hora": "11:00"}, {"ruc": "2050639436", "nombre": "AGROINDUSTRIAL HUAMANI S.A.C.", "hora": "11:00"}, {"ruc": "2060143542", "nombre": "FRUTAS DE PIURA SOCIEDAD ANONIMA CE RRA", "hora": "11:00"}, {"ruc": "2053850430", "nombre": "AGRONEGOCIOS ORO VERDE S.A.C.", "hora": "09:00"}, {"ruc": "2060685479", "nombre": "SERVINCA EXPORT S.A.C.", "hora": "07:00"}, {"ruc": "2056340742", "nombre": "CERDOS SUR PERÚ S.A.", "hora": "08:00"}, {"ruc": "2060821375", "nombre": "FRUKIS S.A", "hora": "11:00"}, {"ruc": "1040414412", "nombre": "ANNY DIANA GOMEZ DE LA CRUZ", "hora": "09:00"}, {"ruc": "2051012038", "nombre": "T & Z S.A.C.", "hora": "07:00"}, {"ruc": "1009409983", "nombre": "MIRTHA CHAMBERGO TELLO", "hora": "09:30"}, {"ruc": "2051146883", "nombre": "AGRICOLA TINCO E.I.R.L.", "hora": "09:30"}, {"ruc": "2061617224", "nombre": "DONOFRIO HELADOS S.A.", "hora": "21:00"}];
+
 let trucks = [];
+
+function poblarDatalist(){
+  const dl = document.getElementById('proveedoresDatalist');
+  dl.innerHTML = PROVEEDORES.map(p => `<option value="${p.ruc} - ${p.nombre}">`).join('');
+}
+poblarDatalist();
+
+function buscarProveedor(texto){
+  texto = (texto || '').trim();
+  if(!texto) return null;
+  const porTexto = PROVEEDORES.find(p => `${p.ruc} - ${p.nombre}` === texto);
+  if(porTexto) return porTexto;
+  const rucMatch = texto.match(/^\d{8,11}/);
+  if(rucMatch){
+    const p = PROVEEDORES.find(p => p.ruc === rucMatch[0]);
+    if(p) return p;
+  }
+  return PROVEEDORES.find(p => p.nombre.toUpperCase() === texto.toUpperCase()) || null;
+}
+
+function onProveedorInput(){
+  const texto = document.getElementById('fProveedorBuscar').value;
+  const match = buscarProveedor(texto);
+  const info = document.getElementById('proveedorInfo');
+  const noMatch = document.getElementById('proveedorNoMatch');
+  if(match){
+    document.getElementById('infoRuc').textContent = match.ruc;
+    document.getElementById('infoHora').textContent = match.hora;
+    info.style.display = 'block';
+    noMatch.style.display = 'none';
+  } else if(texto.trim().length > 2){
+    info.style.display = 'none';
+    noMatch.style.display = 'block';
+  } else {
+    info.style.display = 'none';
+    noMatch.style.display = 'none';
+  }
+}
 let currentId = null;
 const RANGO_MIN = 2, RANGO_MAX = 8; // rango aceptable de temperatura, °C
 
@@ -219,7 +265,7 @@ function render(){
       <div class="card-top">
         <div>
           <div class="card-oc">${escapeHtml(t.transportista || 'Sin nombre')}</div>
-          <div class="card-sub">${escapeHtml(t.tipoMercaderia || '—')}</div>
+          <div class="card-sub">${t.ruc ? 'RUC ' + escapeHtml(t.ruc) + ' · ' : ''}${t.horaAgenda ? 'Agenda ' + escapeHtml(t.horaAgenda) + ' · ' : ''}${escapeHtml(t.tipoMercaderia || '—')}</div>
         </div>
         <span class="pill ${e.cls}">${e.label}</span>
       </div>
@@ -233,19 +279,25 @@ function escapeHtml(s){
 }
 
 function openNew(){
-  document.getElementById('fTransportista').value='';
+  document.getElementById('fProveedorBuscar').value='';
   document.getElementById('fTipoMercaderia').value='';
+  document.getElementById('proveedorInfo').style.display='none';
+  document.getElementById('proveedorNoMatch').style.display='none';
   document.getElementById('sheetNew').classList.add('open');
 }
 function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
 
 async function registrarLlegada(){
-  const transportista = document.getElementById('fTransportista').value.trim();
+  const texto = document.getElementById('fProveedorBuscar').value.trim();
   const tipoMercaderia = document.getElementById('fTipoMercaderia').value.trim();
-  if(!transportista){ alert('Ingresa el transportista o proveedor.'); return; }
+  if(!texto){ alert('Busca y selecciona (o escribe) el proveedor.'); return; }
+  const match = buscarProveedor(texto);
+  const transportista = match ? match.nombre : texto;
+  const ruc = match ? match.ruc : '';
+  const horaAgenda = match ? match.hora : '';
   const doc = {
     id: 'T' + Date.now(),
-    transportista, tipoMercaderia,
+    transportista, tipoMercaderia, ruc, horaAgenda,
     rampa: null,
     temps: [],
     tempAlerta: false,
@@ -423,6 +475,8 @@ async function exportExcel(){
       const inicioRampa = ev.llegadaRampa || ev.llegada; // base para "espera en rampa"
       return {
         'FECHA': fmtDate(ev.llegada),
+        'HORA AGENDA': t.horaAgenda || '',
+        'RUC': t.ruc || '',
         'PROVEEDOR': t.transportista || '',
         'TIPO DE MERCADERIA': t.tipoMercaderia || '',
         'LLEGADA A RECIBO': fmtHora(ev.llegada),
@@ -496,7 +550,7 @@ updateTruck = async function(id, patch){
 // CONEXIÓN A GOOGLE SHEETS
 // Pega aquí la URL que Google te dio al implementar el Apps Script (termina en /exec)
 // ============================================================
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz7Aj8rMIrIPdS09mwq1wD9HJ6U1UR40Yt1rvoaCsWUuQmvteaJwThvMnZ6dq3UmAp6VA/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyV6dWLzBWUmfSbuKDnrXTSIX7dL4vXu0fhyozNVunNJDyStjZbuzFpSzU_iMYC04_1Mw/exec';
 const POLL_MS = 5000; // cada cuántos milisegundos revisa si hay cambios de otros PDA
 
 const fmtDateSheet = ts => ts ? new Date(ts).toLocaleDateString('es-PE') : '';
@@ -513,8 +567,10 @@ function truckToRow(t){
   const ultTemp = t.temps && t.temps.length ? t.temps[t.temps.length-1].valor : '';
   const inicioRampa = ev.llegadaRampa || ev.llegada;
   return {
-    // --- las 9 columnas que ya tienes, tal cual las armaste ---
+    // --- tus columnas visibles, tal cual las armaste ---
     'FECHA': fmtDateSheet(ev.llegada),
+    'HORA AGENDA': t.horaAgenda || '',
+    'RUC': t.ruc || '',
     'PROVEEDOR': t.transportista || '',
     'TIPO DE MERCADERIA': t.tipoMercaderia || '',
     'LLEGADA A RECIBO': fmtHoraSheet(ev.llegada),
@@ -523,7 +579,7 @@ function truckToRow(t){
     'FINALIZACION DE DESCARGA': fmtHoraSheet(ev.finDescarga),
     'FINAL DE ACONDICIONAMIENTO': fmtHoraSheet(ev.finAcondicionamiento),
     'TIEMPO DE ACONDICIONAMIENTO': fmtDuracionSheet(ev.finDescarga, ev.finAcondicionamiento),
-    // --- columnas internas nuevas (no las mires, son para que la app funcione) ---
+    // --- columnas internas (no las mires, son para que la app funcione) ---
     'ID': t.id,
     'RAMPA': t.rampa || '',
     'TEMP_VALOR': ultTemp,
@@ -544,6 +600,8 @@ function rowToTruck(r){
     id: String(r.ID),
     transportista: r.PROVEEDOR || '',
     tipoMercaderia: r['TIPO DE MERCADERIA'] || '',
+    ruc: r.RUC || '',
+    horaAgenda: r['HORA AGENDA'] || '',
     rampa: r.RAMPA || null,
     temps: (r.TEMP_VALOR !== '' && r.TEMP_VALOR !== undefined && r.TEMP_VALOR !== null) ? [{valor: r.TEMP_VALOR}] : [],
     tempAlerta: r.TEMP_ALERTA === true || r.TEMP_ALERTA === 'true',
