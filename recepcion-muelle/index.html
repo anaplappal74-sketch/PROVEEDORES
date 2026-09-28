@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recepción — Muelle · APPINAS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#EEF0EA;
+    --panel:#FFFFFF;
+    --ink:#16231F;
+    --ink-soft:#4B5750;
+    --line:#D8DCD1;
+    --amber:#F2A11E;
+    --amber-ink:#3A2600;
+    --ok:#2F9E58;
+    --ok-bg:#E4F4E9;
+    --alert:#C63F3F;
+    --alert-bg:#FBE7E7;
+    --pending:#8A968F;
+    --pending-bg:#E7EAE3;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121815; --panel:#1B231F; --ink:#EDEFE9; --ink-soft:#9AA69E;
+      --line:#2C362F; --ok-bg:#183826; --alert-bg:#3A2020; --pending-bg:#232C27;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121815; --panel:#1B231F; --ink:#EDEFE9; --ink-soft:#9AA69E;
+    --line:#2C362F; --ok-bg:#183826; --alert-bg:#3A2020; --pending-bg:#232C27;
+  }
+  html{scroll-padding-top: env(safe-area-inset-top, 0px);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  header{
+    position:sticky; top:0; z-index:5;
+    padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;
+    background:var(--ink); color:#fff;
+  }
+  header h1{margin:0; font-size:18px; letter-spacing:.2px;}
+  header p{margin:2px 0 0; font-size:12px; color:#BFC9C2; font-family:'JetBrains Mono',monospace;}
+  main{padding:14px 14px 100px; max-width:480px; margin:0 auto;}
+  .newBtn{
+    width:100%; padding:14px; margin-bottom:14px;
+    background:var(--amber); color:var(--amber-ink); border:none; border-radius:10px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    box-shadow:0 2px 0 rgba(0,0,0,.15);
+  }
+  .row-actions{display:flex; gap:8px; margin-bottom:6px;}
+  .row-actions .newBtn{margin-bottom:0;}
+  .exportBtn{
+    flex:0 0 auto; padding:14px 16px;
+    background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:10px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+  }
+  .exportBtn:disabled{opacity:.45;}
+  .exportStatus{font-size:12px; color:var(--ink-soft); margin:0 0 14px; min-height:14px;}
+  .exportStatus.err{color:var(--alert);}
+  .empty{text-align:center; color:var(--ink-soft); padding:40px 10px; font-size:14px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-bottom:10px; cursor:pointer;
+  }
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .card-oc{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px;}
+  .card-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .pill{
+    font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .pill.pending{background:var(--pending-bg); color:var(--pending);}
+  .pill.ok{background:var(--ok-bg); color:var(--ok);}
+  .pill.alert{background:var(--alert-bg); color:var(--alert);}
+  .steps{display:flex; gap:5px; margin-top:10px;}
+  .step{flex:1; height:5px; border-radius:3px; background:var(--line);}
+  .step.done{background:var(--ok);}
+  .step.alertstep{background:var(--alert);}
+
+  .sheet{
+    position:fixed; inset:0; background:var(--bg); z-index:20;
+    overflow-y:auto; display:none;
+  }
+  .sheet.open{display:block;}
+  .sheet-header{
+    position:sticky; top:0; padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;
+    background:var(--ink); color:#fff; display:flex; align-items:center; gap:10px;
+  }
+  .back{background:none; border:none; color:#fff; font-size:20px; padding:4px 6px;}
+  .sheet-title{font-size:16px; font-weight:700;}
+  .sheet-body{padding:16px; max-width:480px; margin:0 auto;}
+
+  label{display:block; font-size:12px; color:var(--ink-soft); margin:14px 0 5px; font-weight:600;}
+  input, select{
+    width:100%; padding:12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink); font-size:15px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .primary{
+    width:100%; padding:14px; margin-top:20px;
+    background:var(--amber); color:var(--amber-ink); border:none; border-radius:10px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+  }
+  .primary:disabled{opacity:.45;}
+
+  .timeline{margin-top:6px;}
+  .tl-item{display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .tl-item:last-child{border-bottom:none;}
+  .tl-dot{width:10px; height:10px; border-radius:50%; margin-top:5px; background:var(--pending); flex-shrink:0;}
+  .tl-dot.done{background:var(--ok);}
+  .tl-dot.alertdot{background:var(--alert);}
+  .tl-label{font-weight:600; font-size:14px;}
+  .tl-time{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  .tl-extra{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+
+  .action-box{
+    margin-top:18px; padding:14px; background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  }
+  .action-box h3{margin:0 0 4px; font-size:14px;}
+  .action-box p{margin:0 0 10px; font-size:12px; color:var(--ink-soft);}
+  .doneBox{
+    margin-top:18px; padding:14px; background:var(--ok-bg); border-radius:10px; text-align:center;
+    color:var(--ok); font-weight:700; font-size:14px;
+  }
+  .temp-alert-msg{
+    margin-top:8px; padding:8px 10px; background:var(--alert-bg); color:var(--alert);
+    border-radius:8px; font-size:12px; font-weight:600; display:none;
+  }
+  .temp-alert-msg.show{display:block;}
+  .offline-msg{
+    text-align:center; font-size:12px; color:var(--ink-soft); padding:8px; margin-bottom:8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recepción — Muelle · APPINAS</h1>
+  <p id="todayLabel"></p>
+</header>
+
+<div id="syncStatus" style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:8px 14px; background:#222; color:#EEE; word-break:break-word;">Sin actividad todavía.</div>
+
+<main>
+
+  <div class="row-actions">
+    <button class="newBtn" onclick="openNew()">+ Nuevo ingreso</button>
+    <button class="exportBtn" id="exportBtn" onclick="exportExcel()">⬇ Excel</button>
+  </div>
+  <div class="exportStatus" id="exportStatus"></div>
+  <div id="list"></div>
+</main>
+
+<!-- New entry sheet -->
+<div class="sheet" id="sheetNew">
+  <div class="sheet-header"><button class="back" onclick="closeSheet('sheetNew')">←</button><div class="sheet-title">Nuevo ingreso</div></div>
+  <div class="sheet-body">
+    <label>Transportista / Proveedor</label>
+    <input id="fTransportista" placeholder="Nombre / empresa" autocomplete="off">
+    <label>Tipo de mercadería</label>
+    <input id="fTipoMercaderia" placeholder="Ej. Congelados, secos, frutas..." autocomplete="off">
+    <button class="primary" onclick="registrarLlegada()">Registrar llegada</button>
+  </div>
+</div>
+
+<!-- Detail sheet -->
+<div class="sheet" id="sheetDetail">
+  <div class="sheet-header"><button class="back" onclick="closeSheet('sheetDetail')">←</button><div class="sheet-title" id="detailTitle">—</div></div>
+  <div class="sheet-body" id="detailBody"></div>
+</div>
+
+<script>
+let trucks = [];
+let currentId = null;
+const RANGO_MIN = 2, RANGO_MAX = 8; // rango aceptable de temperatura, °C
+
+document.getElementById('todayLabel').textContent = new Date().toLocaleString('es-PE', {dateStyle:'medium', timeStyle:'short'});
+
+function fmtTime(ts){
+  if(!ts) return '';
+  return new Date(ts).toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+}
+
+function estadoDe(t){
+  if(t.eventos.finDescarga) return {label:'Completado', cls:'ok'};
+  if(t.eventos.inicioDescarga) return {label:'Descargando', cls:'pending'};
+  if(t.eventos.temperatura){
+    return t.tempAlerta ? {label:'Temp. fuera de rango', cls:'alert'} : {label:'Temp. OK', cls:'ok'};
+  }
+  if(t.eventos.llegadaRampa) return {label:'En rampa', cls:'pending'};
+  return {label:'Pendiente rampa', cls:'pending'};
+}
+
+function render(){
+  const list = document.getElementById('list');
+  if(trucks.length === 0){
+    list.innerHTML = '<div class="empty">Sin vehículos registrados hoy.</div>';
+    return;
+  }
+  const sorted = [...trucks].sort((a,b)=> (b.eventos.llegada||0) - (a.eventos.llegada||0));
+  list.innerHTML = sorted.map(t=>{
+    const e = estadoDe(t);
+    const stepsDone = [t.eventos.llegada, t.eventos.llegadaRampa, t.eventos.temperatura, t.eventos.inicioDescarga, t.eventos.finDescarga];
+    const stepsHtml = stepsDone.map((done,i)=>{
+      let cls = done ? 'done' : '';
+      if(i===2 && done && t.tempAlerta) cls = 'alertstep';
+      return `<div class="step ${cls}"></div>`;
+    }).join('');
+    return `<div class="card" onclick="openDetail('${t.id}')">
+      <div class="card-top">
+        <div>
+          <div class="card-oc">${escapeHtml(t.transportista || 'Sin nombre')}</div>
+          <div class="card-sub">${escapeHtml(t.tipoMercaderia || '—')}</div>
+        </div>
+        <span class="pill ${e.cls}">${e.label}</span>
+      </div>
+      <div class="steps">${stepsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openNew(){
+  document.getElementById('fTransportista').value='';
+  document.getElementById('fTipoMercaderia').value='';
+  document.getElementById('sheetNew').classList.add('open');
+}
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
+
+async function registrarLlegada(){
+  const transportista = document.getElementById('fTransportista').value.trim();
+  const tipoMercaderia = document.getElementById('fTipoMercaderia').value.trim();
+  if(!transportista){ alert('Ingresa el transportista o proveedor.'); return; }
+  const doc = {
+    id: 'T' + Date.now(),
+    transportista, tipoMercaderia,
+    rampa: null,
+    temps: [],
+    tempAlerta: false,
+    eventos: { llegada: Date.now(), llegadaRampa: null, temperatura: null, inicioDescarga: null, finDescarga: null, finAcondicionamiento: null }
+  };
+  trucks.push(doc);
+  guardarLocal();
+  render();
+  closeSheet('sheetNew');
+  openDetail(doc.id);
+  await guardarEnSheets(doc);
+}
+
+function openDetail(id){
+  currentId = id;
+  renderDetail();
+  document.getElementById('sheetDetail').classList.add('open');
+}
+
+function getTruck(id){ return trucks.find(t=>t.id===id); }
+
+function renderDetail(){
+  const t = getTruck(currentId);
+  if(!t) return;
+  document.getElementById('detailTitle').textContent = t.transportista || 'Ingreso';
+  const ev = t.eventos;
+
+  const timelineItems = [
+    {key:'llegada', label:'Llegada a recibo', ts:ev.llegada},
+    {key:'llegadaRampa', label:'Llegada a rampa', ts:ev.llegadaRampa, extra: t.rampa ? `Rampa ${t.rampa}` : null},
+    {key:'temperatura', label:'Toma de temperatura', ts:ev.temperatura, extra: t.temps.length ? t.temps.map(x=>x.valor+'°C').join(' · ') : null, alert: t.tempAlerta},
+    {key:'inicioDescarga', label:'Inicio de descarga', ts:ev.inicioDescarga},
+    {key:'finDescarga', label:'Finalización de descarga', ts:ev.finDescarga, extra: t.observaciones || null},
+    {key:'finAcondicionamiento', label:'Final de acondicionamiento', ts:ev.finAcondicionamiento},
+  ];
+  const timelineHtml = timelineItems.map(it=>{
+    const dotCls = it.ts ? (it.alert ? 'alertdot' : 'done') : '';
+    return `<div class="tl-item">
+      <div class="tl-dot ${dotCls}"></div>
+      <div>
+        <div class="tl-label">${it.label}</div>
+        ${it.ts ? `<div class="tl-time">${fmtTime(it.ts)}</div>` : `<div class="tl-time">Pendiente</div>`}
+        ${it.extra ? `<div class="tl-extra">${escapeHtml(it.extra)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  let actionHtml = '';
+  if(!ev.llegadaRampa){
+    actionHtml = `
+      <div class="action-box">
+        <h3>Llegada a rampa</h3>
+        <p>Selecciona el número de rampa donde queda el vehículo.</p>
+        <select id="inRampa">
+          <option value="">Rampa...</option>
+          ${Array.from({length:15}, (_,i)=>i+1).map(n=>`<option value="${n}">Rampa ${n}</option>`).join('')}
+        </select>
+        <button class="primary" onclick="registrarRampa()">Registrar llegada a rampa</button>
+      </div>`;
+  } else if(!ev.temperatura){
+    actionHtml = `
+      <div class="action-box">
+        <h3>Toma de temperatura</h3>
+        <p>Rango aceptable: ${RANGO_MIN}–${RANGO_MAX} °C.</p>
+        <input id="inTemp" type="number" step="0.1" placeholder="Ej. 4.5">
+        <div class="temp-alert-msg" id="tempAlertMsg">Fuera de rango. Se registrará como alerta.</div>
+        <button class="primary" onclick="registrarTemperatura()">Registrar temperatura</button>
+      </div>`;
+  } else if(!ev.inicioDescarga){
+    actionHtml = `
+      <div class="action-box">
+        <h3>Descarga</h3>
+        <p>Inicia el conteo de tiempo de descarga.</p>
+        <button class="primary" onclick="registrarInicioDescarga()">Iniciar descarga</button>
+      </div>`;
+  } else if(!ev.finDescarga){
+    actionHtml = `
+      <div class="action-box">
+        <h3>Finalizar descarga</h3>
+        <label>Observaciones (opcional)</label>
+        <input id="inObs" placeholder="Faltantes, daños, etc.">
+        <button class="primary" onclick="registrarFinDescarga()">Finalizar descarga</button>
+      </div>`;
+  } else if(!ev.finAcondicionamiento){
+    actionHtml = `
+      <div class="action-box">
+        <h3>Acondicionamiento</h3>
+        <p>Marca cuando el producto queda listo (etiquetado, paletizado, ubicado).</p>
+        <button class="primary" onclick="registrarFinAcondicionamiento()">Finalizar acondicionamiento</button>
+      </div>`;
+  } else {
+    const minsDescarga = Math.round((ev.finDescarga - ev.inicioDescarga)/60000);
+    const minsAcond = Math.round((ev.finAcondicionamiento - ev.finDescarga)/60000);
+    actionHtml = `<div class="doneBox">Completado · descarga ${minsDescarga} min · acondicionamiento ${minsAcond} min</div>`;
+  }
+
+  document.getElementById('detailBody').innerHTML = `<div class="timeline">${timelineHtml}</div>${actionHtml}`;
+
+  const tempInput = document.getElementById('inTemp');
+  if(tempInput){
+    tempInput.addEventListener('input', ()=>{
+      const v = parseFloat(tempInput.value);
+      const msg = document.getElementById('tempAlertMsg');
+      if(!isNaN(v) && (v < RANGO_MIN || v > RANGO_MAX)) msg.classList.add('show');
+      else msg.classList.remove('show');
+    });
+  }
+}
+
+async function updateTruck(id, patch){
+  const t = getTruck(id);
+  Object.assign(t, patch);
+  if(db){
+    try{ await db.collection('trucks').doc(id).update(patch); }
+    catch(err){ alert('No se pudo guardar el cambio: ' + (err.message||err.code)); }
+  }else{
+    render();
+  }
+  renderDetail();
+}
+
+function registrarRampa(){
+  const val = document.getElementById('inRampa').value;
+  if(!val){ alert('Selecciona una rampa.'); return; }
+  updateTruck(currentId, { rampa: val, 'eventos.llegadaRampa': Date.now() });
+}
+
+function registrarTemperatura(){
+  const t = getTruck(currentId);
+  const val = parseFloat(document.getElementById('inTemp').value);
+  if(isNaN(val)){ alert('Ingresa un valor de temperatura.'); return; }
+  const alerta = (val < RANGO_MIN || val > RANGO_MAX);
+  const temps = [...t.temps, {valor: val, hora: Date.now()}];
+  updateTruck(currentId, { temps, tempAlerta: alerta, 'eventos.temperatura': Date.now() });
+}
+
+function registrarInicioDescarga(){
+  updateTruck(currentId, { 'eventos.inicioDescarga': Date.now() });
+}
+
+function registrarFinDescarga(){
+  const obs = document.getElementById('inObs').value.trim();
+  updateTruck(currentId, { observaciones: obs, 'eventos.finDescarga': Date.now() });
+}
+
+function registrarFinAcondicionamiento(){
+  updateTruck(currentId, { 'eventos.finAcondicionamiento': Date.now() });
+}
+
+
+function setExportStatus(msg, isErr){
+  const el = document.getElementById('exportStatus');
+  el.textContent = msg || '';
+  el.classList.toggle('err', !!isErr);
+}
+
+async function exportExcel(){
+  if(trucks.length === 0){ setExportStatus('No hay registros todavía.', true); return; }
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true; btn.textContent = 'Generando...';
+  setExportStatus('Generando archivo...');
+  try{
+    const fmtDate = ts => ts ? new Date(ts).toLocaleDateString('es-PE') : '';
+    const fmtHora = ts => ts ? new Date(ts).toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}) : '';
+    const fmtDuracion = (msDesde, msHasta) => {
+      if(!msDesde || !msHasta) return '';
+      const mins = Math.round((msHasta - msDesde)/60000);
+      const h = Math.floor(mins/60), m = mins%60;
+      return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    };
+
+    const rows = trucks.map(t=>{
+      const ev = t.eventos;
+      const ultTemp = t.temps && t.temps.length ? t.temps[t.temps.length-1].valor : '';
+      const inicioRampa = ev.llegadaRampa || ev.llegada; // base para "espera en rampa"
+      return {
+        'FECHA': fmtDate(ev.llegada),
+        'PROVEEDOR': t.transportista || '',
+        'TIPO DE MERCADERIA': t.tipoMercaderia || '',
+        'LLEGADA A RECIBO': fmtHora(ev.llegada),
+        'INICIO DE DESCARGA (T°)': ev.inicioDescarga ? `${fmtHora(ev.inicioDescarga)}${ultTemp !== '' ? ' (' + ultTemp + '°C)' : ''}` : '',
+        'TIEMPO DE ESPERA EN RAMPA': fmtDuracion(inicioRampa, ev.inicioDescarga),
+        'FINALIZACION DE DESCARGA': fmtHora(ev.finDescarga),
+        'FINAL DE ACONDICIONAMIENTO': fmtHora(ev.finAcondicionamiento),
+        'TIEMPO DE ACONDICIONAMIENTO': fmtDuracion(ev.finDescarga, ev.finAcondicionamiento)
+      };
+    }).sort((a,b)=> (a['FECHA']||'').localeCompare(b['FECHA']||''));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Object.keys(rows[0]).map(k => ({wch: Math.max(k.length, 14)}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Recepción');
+    const fecha = new Date().toISOString().slice(0,10);
+    const filename = `recepcion_${fecha}.xlsx`;
+
+    const wbArray = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const blob = new Blob([wbArray], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    setExportStatus('Excel descargado: ' + filename);
+  }catch(err){
+    setExportStatus('No se pudo generar el archivo: ' + (err?.message || err), true);
+  }finally{
+    btn.disabled = false; btn.textContent = '⬇ Excel';
+  }
+}
+
+// --- respaldo local mientras no configures Google Sheets ---
+const STORAGE_KEY = 'recepcion_muelle_trucks';
+function guardarLocal(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(trucks)); }
+function cargarLocal(){
+  try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+
+async function updateNested(id, patch){
+  // db.update() replaces top-level fields wholesale, so expand dotted keys into the eventos object.
+  const t = getTruck(id);
+  const expanded = {};
+  for(const k in patch){
+    if(k.startsWith('eventos.')){
+      expanded.eventos = expanded.eventos || {...t.eventos};
+      expanded.eventos[k.split('.')[1]] = patch[k];
+    } else {
+      expanded[k] = patch[k];
+    }
+  }
+  return expanded;
+}
+const _origUpdateTruck = updateTruck;
+updateTruck = async function(id, patch){
+  const expanded = await updateNested(id, patch);
+  const t = getTruck(id);
+  Object.assign(t, expanded);
+  if(expanded.eventos) t.eventos = expanded.eventos;
+  guardarLocal();
+  render();
+  renderDetail();
+  await guardarEnSheets(t);
+};
+
+// ============================================================
+// CONEXIÓN A GOOGLE SHEETS
+// Pega aquí la URL que Google te dio al implementar el Apps Script (termina en /exec)
+// ============================================================
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz7Aj8rMIrIPdS09mwq1wD9HJ6U1UR40Yt1rvoaCsWUuQmvteaJwThvMnZ6dq3UmAp6VA/exec';
+const POLL_MS = 5000; // cada cuántos milisegundos revisa si hay cambios de otros PDA
+
+const fmtDateSheet = ts => ts ? new Date(ts).toLocaleDateString('es-PE') : '';
+const fmtHoraSheet = ts => ts ? new Date(ts).toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}) : '';
+const fmtDuracionSheet = (msDesde, msHasta) => {
+  if(!msDesde || !msHasta) return '';
+  const mins = Math.round((msHasta - msDesde)/60000);
+  const h = Math.floor(mins/60), m = mins%60;
+  return h > 0 ? `${h}h ${m}min` : `${m}min`;
+};
+
+function truckToRow(t){
+  const ev = t.eventos;
+  const ultTemp = t.temps && t.temps.length ? t.temps[t.temps.length-1].valor : '';
+  const inicioRampa = ev.llegadaRampa || ev.llegada;
+  return {
+    // --- las 9 columnas que ya tienes, tal cual las armaste ---
+    'FECHA': fmtDateSheet(ev.llegada),
+    'PROVEEDOR': t.transportista || '',
+    'TIPO DE MERCADERIA': t.tipoMercaderia || '',
+    'LLEGADA A RECIBO': fmtHoraSheet(ev.llegada),
+    'INICIO DE DESCARGA (T°)': ev.inicioDescarga ? `${fmtHoraSheet(ev.inicioDescarga)}${ultTemp !== '' ? ' (' + ultTemp + '°C)' : ''}` : '',
+    'TIEMPO DE ESPERA EN RAMPA': fmtDuracionSheet(inicioRampa, ev.inicioDescarga),
+    'FINALIZACION DE DESCARGA': fmtHoraSheet(ev.finDescarga),
+    'FINAL DE ACONDICIONAMIENTO': fmtHoraSheet(ev.finAcondicionamiento),
+    'TIEMPO DE ACONDICIONAMIENTO': fmtDuracionSheet(ev.finDescarga, ev.finAcondicionamiento),
+    // --- columnas internas nuevas (no las mires, son para que la app funcione) ---
+    'ID': t.id,
+    'RAMPA': t.rampa || '',
+    'TEMP_VALOR': ultTemp,
+    'TEMP_ALERTA': t.tempAlerta ? 'true' : 'false',
+    'OBSERVACIONES': t.observaciones || '',
+    'TS_LLEGADA': ev.llegada || '',
+    'TS_LLEGADA_RAMPA': ev.llegadaRampa || '',
+    'TS_TEMPERATURA': ev.temperatura || '',
+    'TS_INICIO_DESCARGA': ev.inicioDescarga || '',
+    'TS_FIN_DESCARGA': ev.finDescarga || '',
+    'TS_FIN_ACONDICIONAMIENTO': ev.finAcondicionamiento || ''
+  };
+}
+
+function rowToTruck(r){
+  const num = v => (v === '' || v === undefined || v === null) ? null : Number(v);
+  return {
+    id: String(r.ID),
+    transportista: r.PROVEEDOR || '',
+    tipoMercaderia: r['TIPO DE MERCADERIA'] || '',
+    rampa: r.RAMPA || null,
+    temps: (r.TEMP_VALOR !== '' && r.TEMP_VALOR !== undefined && r.TEMP_VALOR !== null) ? [{valor: r.TEMP_VALOR}] : [],
+    tempAlerta: r.TEMP_ALERTA === true || r.TEMP_ALERTA === 'true',
+    observaciones: r.OBSERVACIONES || '',
+    eventos: {
+      llegada: num(r.TS_LLEGADA),
+      llegadaRampa: num(r.TS_LLEGADA_RAMPA),
+      temperatura: num(r.TS_TEMPERATURA),
+      inicioDescarga: num(r.TS_INICIO_DESCARGA),
+      finDescarga: num(r.TS_FIN_DESCARGA),
+      finAcondicionamiento: num(r.TS_FIN_ACONDICIONAMIENTO)
+    }
+  };
+}
+
+function setSyncStatus(msg, isError){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  const hora = new Date().toLocaleTimeString('es-PE');
+  el.textContent = `[${hora}] ${msg}`;
+  el.style.background = isError ? '#4a1f1f' : '#1f3a2a';
+  el.style.color = isError ? '#ffb3b3' : '#b3ffcc';
+}
+
+async function guardarEnSheets(t){
+  if(SHEETS_URL.includes('PEGA_AQUI')){ setSyncStatus('SHEETS_URL no configurada todavía.', true); return; }
+  setSyncStatus('Guardando en Sheets...');
+  try{
+    // text/plain evita que el navegador dispare una petición OPTIONS de verificación (CORS)
+    // que Apps Script no responde bien; Apps Script igual lee el JSON del cuerpo sin problema.
+    const res = await fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(truckToRow(t))
+    });
+    const text = await res.text();
+    setSyncStatus(`Guardado. Respuesta del servidor: ${text.slice(0,150)}`);
+  }catch(err){
+    setSyncStatus(`ERROR al guardar: ${err.message}`, true);
+  }
+}
+
+async function cargarDeSheets(){
+  if(SHEETS_URL.includes('PEGA_AQUI')) return;
+  try{
+    const res = await fetch(SHEETS_URL);
+    const text = await res.text();
+    let rows;
+    try{ rows = JSON.parse(text); }
+    catch(parseErr){
+      setSyncStatus(`ERROR: la respuesta no es JSON válido. Empieza así: ${text.slice(0,150)}`, true);
+      return;
+    }
+    if(!Array.isArray(rows)){
+      setSyncStatus(`ERROR: se esperaba una lista y llegó: ${text.slice(0,150)}`, true);
+      return;
+    }
+    trucks = rows.map(rowToTruck);
+    render();
+    if(currentId && document.getElementById('sheetDetail').classList.contains('open')) renderDetail();
+  }catch(err){
+    setSyncStatus(`ERROR al leer Sheets: ${err.message}`, true);
+  }
+}
+
+function init(){
+  if(SHEETS_URL.includes('PEGA_AQUI')){
+    // Mientras no configures la URL, funciona localmente en este navegador (localStorage) como respaldo.
+    setSyncStatus('Funcionando en modo local (SHEETS_URL no configurada).', true);
+    trucks = cargarLocal();
+    render();
+    return;
+  }
+  setSyncStatus('Conectando con Google Sheets...');
+  cargarDeSheets();
+  setInterval(cargarDeSheets, POLL_MS);
+}
+init();
+</script>
+</body>
+</html>
