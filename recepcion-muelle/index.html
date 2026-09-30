@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Recepción — Muelle · APPINAS</title>
+<title>CONTROL RECIBO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -144,11 +144,9 @@
 <body>
 
 <header>
-  <h1>Recepción — Muelle · APPINAS</h1>
+  <h1>CONTROL RECIBO</h1>
   <p id="todayLabel"></p>
 </header>
-
-<div id="syncStatus" style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:8px 14px; background:#222; color:#EEE; word-break:break-word;">Sin actividad todavía.</div>
 
 <main>
 
@@ -275,7 +273,7 @@ function render(){
 }
 
 function escapeHtml(s){
-  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function openNew(){
@@ -308,7 +306,6 @@ async function registrarLlegada(){
   render();
   closeSheet('sheetNew');
   openDetail(doc.id);
-  await guardarEnSheets(doc);
 }
 
 function openDetail(id){
@@ -543,141 +540,11 @@ updateTruck = async function(id, patch){
   guardarLocal();
   render();
   renderDetail();
-  await guardarEnSheets(t);
 };
-
-// ============================================================
-// CONEXIÓN A GOOGLE SHEETS
-// Pega aquí la URL que Google te dio al implementar el Apps Script (termina en /exec)
-// ============================================================
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzQs8d7iYrp-swxUw7ElCWFiCOq9ZfP6bInxaDS0QsrrL7Oc6C3NHSX7cWgakq4nxTLHg/exec';
-const POLL_MS = 5000; // cada cuántos milisegundos revisa si hay cambios de otros PDA
-
-const fmtDateSheet = ts => ts ? new Date(ts).toLocaleDateString('es-PE') : '';
-const fmtHoraSheet = ts => ts ? new Date(ts).toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}) : '';
-const fmtDuracionSheet = (msDesde, msHasta) => {
-  if(!msDesde || !msHasta) return '';
-  const mins = Math.round((msHasta - msDesde)/60000);
-  const h = Math.floor(mins/60), m = mins%60;
-  return h > 0 ? `${h}h ${m}min` : `${m}min`;
-};
-
-function truckToRow(t){
-  const ev = t.eventos;
-  const ultTemp = t.temps && t.temps.length ? t.temps[t.temps.length-1].valor : '';
-  const inicioRampa = ev.llegadaRampa || ev.llegada;
-  return {
-    // --- tus columnas visibles, tal cual las armaste ---
-    'FECHA': fmtDateSheet(ev.llegada),
-    'HORA AGENDA': t.horaAgenda || '',
-    'RUC': t.ruc || '',
-    'PROVEEDOR': t.transportista || '',
-    'TIPO DE MERCADERIA': t.tipoMercaderia || '',
-    'LLEGADA A RECIBO': fmtHoraSheet(ev.llegada),
-    'INICIO DE DESCARGA (T°)': ev.inicioDescarga ? `${fmtHoraSheet(ev.inicioDescarga)}${ultTemp !== '' ? ' (' + ultTemp + '°C)' : ''}` : '',
-    'TIEMPO DE ESPERA EN RAMPA': fmtDuracionSheet(inicioRampa, ev.inicioDescarga),
-    'FINALIZACION DE DESCARGA': fmtHoraSheet(ev.finDescarga),
-    'FINAL DE ACONDICIONAMIENTO': fmtHoraSheet(ev.finAcondicionamiento),
-    'TIEMPO DE ACONDICIONAMIENTO': fmtDuracionSheet(ev.finDescarga, ev.finAcondicionamiento),
-    // --- columnas internas (no las mires, son para que la app funcione) ---
-    'ID': t.id,
-    'RAMPA': t.rampa || '',
-    'TEMP_VALOR': ultTemp,
-    'TEMP_ALERTA': t.tempAlerta ? 'true' : 'false',
-    'OBSERVACIONES': t.observaciones || '',
-    'TS_LLEGADA': ev.llegada || '',
-    'TS_LLEGADA_RAMPA': ev.llegadaRampa || '',
-    'TS_TEMPERATURA': ev.temperatura || '',
-    'TS_INICIO_DESCARGA': ev.inicioDescarga || '',
-    'TS_FIN_DESCARGA': ev.finDescarga || '',
-    'TS_FIN_ACONDICIONAMIENTO': ev.finAcondicionamiento || ''
-  };
-}
-
-function rowToTruck(r){
-  const num = v => (v === '' || v === undefined || v === null) ? null : Number(v);
-  return {
-    id: String(r.ID),
-    transportista: r.PROVEEDOR || '',
-    tipoMercaderia: r['TIPO DE MERCADERIA'] || '',
-    ruc: r.RUC || '',
-    horaAgenda: r['HORA AGENDA'] || '',
-    rampa: r.RAMPA || null,
-    temps: (r.TEMP_VALOR !== '' && r.TEMP_VALOR !== undefined && r.TEMP_VALOR !== null) ? [{valor: r.TEMP_VALOR}] : [],
-    tempAlerta: r.TEMP_ALERTA === true || r.TEMP_ALERTA === 'true',
-    observaciones: r.OBSERVACIONES || '',
-    eventos: {
-      llegada: num(r.TS_LLEGADA),
-      llegadaRampa: num(r.TS_LLEGADA_RAMPA),
-      temperatura: num(r.TS_TEMPERATURA),
-      inicioDescarga: num(r.TS_INICIO_DESCARGA),
-      finDescarga: num(r.TS_FIN_DESCARGA),
-      finAcondicionamiento: num(r.TS_FIN_ACONDICIONAMIENTO)
-    }
-  };
-}
-
-function setSyncStatus(msg, isError){
-  const el = document.getElementById('syncStatus');
-  if(!el) return;
-  const hora = new Date().toLocaleTimeString('es-PE');
-  el.textContent = `[${hora}] ${msg}`;
-  el.style.background = isError ? '#4a1f1f' : '#1f3a2a';
-  el.style.color = isError ? '#ffb3b3' : '#b3ffcc';
-}
-
-async function guardarEnSheets(t){
-  if(SHEETS_URL.includes('PEGA_AQUI')){ setSyncStatus('SHEETS_URL no configurada todavía.', true); return; }
-  setSyncStatus('Guardando en Sheets...');
-  try{
-    // text/plain evita que el navegador dispare una petición OPTIONS de verificación (CORS)
-    // que Apps Script no responde bien; Apps Script igual lee el JSON del cuerpo sin problema.
-    const res = await fetch(SHEETS_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify(truckToRow(t))
-    });
-    const text = await res.text();
-    setSyncStatus(`Guardado. Respuesta del servidor: ${text.slice(0,150)}`);
-  }catch(err){
-    setSyncStatus(`ERROR al guardar: ${err.message}`, true);
-  }
-}
-
-async function cargarDeSheets(){
-  if(SHEETS_URL.includes('PEGA_AQUI')) return;
-  try{
-    const res = await fetch(SHEETS_URL);
-    const text = await res.text();
-    let rows;
-    try{ rows = JSON.parse(text); }
-    catch(parseErr){
-      setSyncStatus(`ERROR: la respuesta no es JSON válido. Empieza así: ${text.slice(0,150)}`, true);
-      return;
-    }
-    if(!Array.isArray(rows)){
-      setSyncStatus(`ERROR: se esperaba una lista y llegó: ${text.slice(0,150)}`, true);
-      return;
-    }
-    trucks = rows.map(rowToTruck);
-    render();
-    if(currentId && document.getElementById('sheetDetail').classList.contains('open')) renderDetail();
-  }catch(err){
-    setSyncStatus(`ERROR al leer Sheets: ${err.message}`, true);
-  }
-}
 
 function init(){
-  if(SHEETS_URL.includes('PEGA_AQUI')){
-    // Mientras no configures la URL, funciona localmente en este navegador (localStorage) como respaldo.
-    setSyncStatus('Funcionando en modo local (SHEETS_URL no configurada).', true);
-    trucks = cargarLocal();
-    render();
-    return;
-  }
-  setSyncStatus('Conectando con Google Sheets...');
-  cargarDeSheets();
-  setInterval(cargarDeSheets, POLL_MS);
+  trucks = cargarLocal();
+  render();
 }
 init();
 </script>
